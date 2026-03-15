@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { getTaskProgressForChange, formatTaskStatus } from '../utils/task-progress.js';
 import { Validator } from './validation/validator.js';
+import { readProjectConfig } from './project-config.js';
 import chalk from 'chalk';
 import {
   findSpecUpdates,
@@ -264,8 +265,12 @@ export class ArchiveCommand {
       }
     }
 
-    // Create archive directory with date prefix
-    const archiveName = `${this.getArchiveDate()}-${changeName}`;
+    // Create archive directory with optional date prefix
+    const projectConfig = readProjectConfig(targetPath);
+    const useDatePrefix = projectConfig?.archive?.datePrefix !== false;
+    const archiveName = useDatePrefix
+      ? `${this.getArchiveDate()}-${changeName}`
+      : changeName;
     const archivePath = path.join(archiveDir, archiveName);
 
     // Check if archive already exists

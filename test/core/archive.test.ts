@@ -57,23 +57,85 @@ describe('ArchiveCommand', () => {
       const changeName = 'test-feature';
       const changeDir = path.join(tempDir, 'openspec', 'changes', changeName);
       await fs.mkdir(changeDir, { recursive: true });
-      
+
       // Create tasks.md with completed tasks
       const tasksContent = '- [x] Task 1\n- [x] Task 2';
       await fs.writeFile(path.join(changeDir, 'tasks.md'), tasksContent);
-      
+
       // Execute archive with --yes flag
       await archiveCommand.execute(changeName, { yes: true });
-      
+
       // Check that change was moved to archive
       const archiveDir = path.join(tempDir, 'openspec', 'changes', 'archive');
       const archives = await fs.readdir(archiveDir);
-      
+
       expect(archives.length).toBe(1);
       expect(archives[0]).toMatch(new RegExp(`\\d{4}-\\d{2}-\\d{2}-${changeName}`));
-      
+
       // Verify original change directory no longer exists
       await expect(fs.access(changeDir)).rejects.toThrow();
+    });
+
+    it('should archive without date prefix when config datePrefix is false', async () => {
+      const changeName = 'v0.1.0';
+      const changeDir = path.join(tempDir, 'openspec', 'changes', changeName);
+      await fs.mkdir(changeDir, { recursive: true });
+      await fs.writeFile(path.join(changeDir, 'tasks.md'), '- [x] Task 1');
+
+      // Create project config with datePrefix: false
+      await fs.writeFile(
+        path.join(tempDir, 'openspec', 'config.yaml'),
+        'schema: spec-driven\narchive:\n  datePrefix: false\n'
+      );
+
+      await archiveCommand.execute(changeName, { yes: true });
+
+      const archiveDir = path.join(tempDir, 'openspec', 'changes', 'archive');
+      const archives = await fs.readdir(archiveDir);
+
+      expect(archives.length).toBe(1);
+      expect(archives[0]).toBe(changeName);
+    });
+
+    it('should archive with date prefix when config datePrefix is true', async () => {
+      const changeName = 'v0.2.0';
+      const changeDir = path.join(tempDir, 'openspec', 'changes', changeName);
+      await fs.mkdir(changeDir, { recursive: true });
+      await fs.writeFile(path.join(changeDir, 'tasks.md'), '- [x] Task 1');
+
+      // Create project config with datePrefix: true
+      await fs.writeFile(
+        path.join(tempDir, 'openspec', 'config.yaml'),
+        'schema: spec-driven\narchive:\n  datePrefix: true\n'
+      );
+
+      await archiveCommand.execute(changeName, { yes: true });
+
+      const archiveDir = path.join(tempDir, 'openspec', 'changes', 'archive');
+      const archives = await fs.readdir(archiveDir);
+
+      expect(archives.length).toBe(1);
+      expect(archives[0]).toMatch(new RegExp(`\\d{4}-\\d{2}-\\d{2}-${changeName}`));
+    });
+
+    it('should error when datePrefix is false and same-name archive exists', async () => {
+      const changeName = 'v0.1.0';
+      const changeDir = path.join(tempDir, 'openspec', 'changes', changeName);
+      await fs.mkdir(changeDir, { recursive: true });
+      await fs.writeFile(path.join(changeDir, 'tasks.md'), '- [x] Task 1');
+
+      // Create existing archive with same name
+      const existingArchive = path.join(tempDir, 'openspec', 'changes', 'archive', changeName);
+      await fs.mkdir(existingArchive, { recursive: true });
+
+      // Create project config with datePrefix: false
+      await fs.writeFile(
+        path.join(tempDir, 'openspec', 'config.yaml'),
+        'schema: spec-driven\narchive:\n  datePrefix: false\n'
+      );
+
+      await expect(archiveCommand.execute(changeName, { yes: true }))
+        .rejects.toThrow(`Archive '${changeName}' already exists.`);
     });
 
     it('should warn about incomplete tasks', async () => {

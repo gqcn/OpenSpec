@@ -38,6 +38,17 @@ export const ProjectConfigSchema = z.object({
     )
     .optional()
     .describe('Per-artifact rules, keyed by artifact ID'),
+
+  // Optional: archive behavior settings
+  archive: z
+    .object({
+      datePrefix: z
+        .boolean()
+        .optional()
+        .describe('Whether to prefix archive names with date (YYYY-MM-DD). Default: true'),
+    })
+    .optional()
+    .describe('Archive behavior settings'),
 });
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
@@ -149,6 +160,30 @@ export function readProjectConfig(projectRoot: string): ProjectConfig | null {
         }
       } else {
         console.warn(`Invalid 'rules' field in config (must be object)`);
+      }
+    }
+
+    // Parse archive field using Zod
+    if (raw.archive !== undefined) {
+      if (typeof raw.archive === 'object' && raw.archive !== null && !Array.isArray(raw.archive)) {
+        const archiveConfig: { datePrefix?: boolean } = {};
+        let hasValidFields = false;
+
+        if (raw.archive.datePrefix !== undefined) {
+          const datePrefixResult = z.boolean().safeParse(raw.archive.datePrefix);
+          if (datePrefixResult.success) {
+            archiveConfig.datePrefix = datePrefixResult.data;
+            hasValidFields = true;
+          } else {
+            console.warn(`Invalid 'archive.datePrefix' field in config (must be boolean)`);
+          }
+        }
+
+        if (hasValidFields) {
+          config.archive = archiveConfig;
+        }
+      } else {
+        console.warn(`Invalid 'archive' field in config (must be object)`);
       }
     }
 

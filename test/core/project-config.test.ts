@@ -415,6 +415,96 @@ context: |
       });
     });
 
+    describe('archive settings', () => {
+      it('should parse archive.datePrefix: false', () => {
+        const configDir = path.join(tempDir, 'openspec');
+        fs.mkdirSync(configDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(configDir, 'config.yaml'),
+          `schema: spec-driven
+archive:
+  datePrefix: false
+`
+        );
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.archive).toEqual({ datePrefix: false });
+        expect(consoleWarnSpy).not.toHaveBeenCalled();
+      });
+
+      it('should parse archive.datePrefix: true', () => {
+        const configDir = path.join(tempDir, 'openspec');
+        fs.mkdirSync(configDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(configDir, 'config.yaml'),
+          `schema: spec-driven
+archive:
+  datePrefix: true
+`
+        );
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.archive).toEqual({ datePrefix: true });
+        expect(consoleWarnSpy).not.toHaveBeenCalled();
+      });
+
+      it('should warn when archive.datePrefix is not boolean', () => {
+        const configDir = path.join(tempDir, 'openspec');
+        fs.mkdirSync(configDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(configDir, 'config.yaml'),
+          `schema: spec-driven
+archive:
+  datePrefix: "no"
+`
+        );
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.archive).toBeUndefined();
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Invalid 'archive.datePrefix' field")
+        );
+      });
+
+      it('should warn when archive is not an object', () => {
+        const configDir = path.join(tempDir, 'openspec');
+        fs.mkdirSync(configDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(configDir, 'config.yaml'),
+          `schema: spec-driven
+archive: "not an object"
+`
+        );
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.archive).toBeUndefined();
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Invalid 'archive' field")
+        );
+      });
+
+      it('should ignore archive with no valid fields', () => {
+        const configDir = path.join(tempDir, 'openspec');
+        fs.mkdirSync(configDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(configDir, 'config.yaml'),
+          `schema: spec-driven
+archive:
+  unknownField: true
+`
+        );
+
+        const config = readProjectConfig(tempDir);
+
+        expect(config?.archive).toBeUndefined();
+        expect(consoleWarnSpy).not.toHaveBeenCalled();
+      });
+    });
+
     describe('multi-line and special characters', () => {
       it('should preserve multi-line context', () => {
         const configDir = path.join(tempDir, 'openspec');
